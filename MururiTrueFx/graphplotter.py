@@ -1,11 +1,10 @@
-from MururiTrueFx import truefx
+rom MururiTrueFx import truefx
 import matplotlib.pyplot as plt
 import matplotlib.cbook as cbook # used as a data starage format.
 import math
 # https://github.com/femtotrader/pandas_datareaders_unofficial/commit/b3008b1eb9e2fd1cd86efd6561296fcb5adf0bd8 some copy and paste.
 import time
 import threading
-import mpl_finance
 
 auth_response = truefx.login('jesusislord3','Anglocat777',['EUR/USD'])
 
@@ -21,7 +20,8 @@ tickrate = 0.025 # official tick rate
 duration_to_plot = 3600 # in seconds
 bootstrap = math.ceil(duration_to_plot / tickrate) # round up to give a rough estimated number of samples.
 
-
+def boxplot(poll_one_pair:dict,time_in_seconds:int=3600,poll_rate:float=0.025): # results from truefx.poll_one_pair()
+    pass
 
 # from this example - http://stackoverflow.com/a/18793416
 
@@ -51,26 +51,6 @@ stats = cbook.boxplot_stats({'test1':1.2,'test2':1.4,'test5':1.7})
 
 #plot graph
 fs = 10  # fontsize
-
-# demonstrate how to toggle the display of different elements:
-fig, axes = plt.subplots()
-
-
-
-
-
-
-
-plt.show()
-# redraw graph
-while True:
-    time.sleep(tickrate)
-    print('Current Rates Are \n',response)
-    plt.pause(tickrate)
-    # update data
-    fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(6, 6), sharey=True)
-    # redraw
-    plt.draw()
 
 
 
