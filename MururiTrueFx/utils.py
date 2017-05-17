@@ -6,3 +6,6 @@ def rjust( targetlistlength:int, list_to_pad:list ,fillvalue=''):
 
 def ljust(targetlistlength:int, list_to_pad:list ,fillvalue=''):
     return self + [fillvalue] * (targetlistlength - len(list_to_pad))
+
+def actual_figure(bigbid,bidpips):
+    return float(bigbid) + (float(bidpips) / 100000)
