@@ -1,16 +1,10 @@
 from MururiTrueFx import truefx
 from MururiTrueFx.utils import actual_figure
-import matplotlib
-matplotlib.use('qt5agg')
-import matplotlib.pyplot as plt
-import matplotlib.finance as mplf
-import matplotlib.cbook as cbook # used as a data starage format.
+
 import math
 # https://github.com/femtotrader/pandas_datareaders_unofficial/commit/b3008b1eb9e2fd1cd86efd6561296fcb5adf0bd8 some copy and paste.
 import time
 import threading
-from mpl_finance import mpl_finance
-from matplotlib.ticker import Formatter, AutoLocator, LinearLocator
 
 auth_response = truefx.login('jesusislord3','Anglocat777',['EUR/USD'])
 
@@ -43,7 +37,7 @@ def data_listener(stop_interupt_signal:threading.Event):
         closes.append(actual_figure(current_poll['bigbid'],current_poll['bidpips']))
         highs.append(float(current_poll['high']))
         lows.append(float(current_poll['low']))
-        timestamps.append(int(current_poll['millisecond-timestamp']))
+        timestamps.append(current_poll['millisecond-timestamp'])
 
         # truncate plot axis
         """
@@ -65,79 +59,49 @@ thread_stopper.set()
 print('length of labels:',len(timestamps),'length of rates',len(closes))
 
 time.sleep(5)
-# statts is populated after the listener starts
-# stats = cbook.boxplot_stats(rates, labels=timestamps, bootstrap=bootstrap)
-# stats = cbook.boxplot_stats({'test1':1.2,'test2':1.4,'test5':1.7})
-
-#plot graph
-fs = 10  # fontsize
-
-# demonstrate how to toggle the display of different elements:
-# fig, ax = plt.subplots()
-
-# mpl_finance.candlestick2_ochl(ax,opens,closes,highs,lows,)
-
-
-#ax.autoscale_view() # layout correction
-# plt.setp(plt.gca().get_xticklabels(), rotation=45, horizontalalignment='right') # set the layout of the grid. tick  from right to left and bars should be verticle.
-
 print(opens,closes,highs,lows,timestamps)
+###  BEGIN GRAPH PLOTTING
+import numpy as np
+from bokeh.plotting import figure, output_file, show
 
-# openline,closeline,highline,lowline = plt.plot(opens,timestamps,closes,timestamps,highs,timestamps,lows,timestamps)
+def to_np_dt64(x):
+    return np.datetime_as_string(np.datetime64(x,'ms'))
 
-# plt.Axes()
+nptimestamps = list(map(to_np_dt64,timestamps))
 
-ax,fig, = plt.subplots(1,1)
-# ax = plt.Axes(fig)
+print('nptimestamps\n',nptimestamps)
 
-lines,bars = mplf.candlestick2_ochl(ax,opens,closes,highs,lows)
-# lines = plt.plot(opens,timestamps,closes,timestamps,highs,timestamps, lows,timestamps)
-"""
-plt.setp(lines[0],label='Open',linestyle='-',color='g',marker='+')
-plt.setp(lines[1],label='Close',linestyle='-',color='k',marker='+')
-plt.setp(lines[2],label='High',linestyle='--',color='g',marker='+')
-plt.setp(lines[3],label='Low',linestyle='--',color='r',marker='+')
-"""
-"""
-graph,XYAxes = plt.subplots(sharex=True) # know as a figure - see here : http://matplotlib.org/faq/usage_faq.html#parts-of-a-figure
-# = plt.axes() # derive axes from current graph
+aapl = np.array(closes)
+aapl_dates = np.array(nptimestamps, dtype=np.datetime64)
 
+print('aapl_dates',aapl_dates)
 
-# TODO - specify labels as text.
+## EXAMPLE
 
-XYAxes.plot(opens,timestamps,'-g',label='Open',)    #
-XYAxes.plot(closes,timestamps,'-k',label='Close')   #
-XYAxes.plot(highs,timestamps,'--g', label='High')   #
-XYAxes.plot(lows,timestamps,'--r', label='Low')     #
+window_size = 30
+window = np.ones(window_size)/float(window_size)
+aapl_avg = np.convolve(aapl, window, 'same')
 
-XYAxes.get_xaxis().get_major_formatter().set_useOffset(False)
-XYAxes.xaxis.set_major_locator(LinearLocator)
-XYAxes.xaxis.set_minor_locator( LinearLocator )
-XYAxes.yaxis.set_major_locator( AutoLocator )
-XYAxes.yaxis.set_minor_locator( AutoLocator )
+# output to static HTML file
+output_file("stocks.html", title="stocks.py example")
 
-# graph.add_axes(XYAxes)
+# create a new plot with a a datetime axis type
+p = figure(width=800, height=350, x_axis_type="datetime")
 
+# add renderers
+p.circle(aapl_dates, aapl, size=4, color='darkgrey', alpha=0.2, legend='close')
+p.line(aapl_dates, aapl_avg, color='navy', legend='avg')
 
-# graph.show(True)
-# graph.draw()
-"""
+# NEW: customize by setting attributes
+p.title.text = "AAPL One-Month Average"
+p.legend.location = "top_left"
+p.grid.grid_line_alpha=0
+p.xaxis.axis_label = 'Date'
+p.yaxis.axis_label = 'Price'
+p.ygrid.band_fill_color="olive"
+p.ygrid.band_fill_alpha = 0.1
 
-fig.show()
-# plt.autoscale()
-# plt.show()
-"""
-# redraw graph
-while True:
-    time.sleep(tickrate)
-    print('Current Rates Are \n',response)
-    plt.pause(tickrate)
-    # update data
-    # fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(6, 6), sharey=True)
-    # redraw
-    plt.draw()
+# show the results
+show(p)
 
-"""
-
-
-
+## End Example
