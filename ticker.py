@@ -19,7 +19,7 @@ timestamps = []
 response = ''
 
 #graph settings
-tickrate = 0.025 # official tick rate
+tickrate = 0.25 # official tick rate
 duration_to_plot = 3600 # in seconds
 bootstrap = math.ceil(duration_to_plot / tickrate) # round up to give a rough estimated number of samples.
 
@@ -32,33 +32,43 @@ def data_listener(stop_interupt_signal:threading.Event):
         time.sleep(tickrate)
         current_poll = truefx.poll_one_pair(auth_response)
         print('Tick')
-        print('Current Poll is',current_poll['response'])
-        opens.append(float(current_poll['pollopen']))
-        closes.append(actual_figure(current_poll['bigbid'],current_poll['bidpips']))
-        highs.append(float(current_poll['high']))
-        lows.append(float(current_poll['low']))
-        timestamps.append(current_poll['millisecond-timestamp'])
+        if not timestamps: # if first entry
+            timestamps.append(current_poll['millisecond-timestamp'])
+            print('Current Poll is', current_poll['response'])
+            opens.append(float(current_poll['pollopen']))
+            closes.append(actual_figure(current_poll['bigbid'], current_poll['bidpips']))
+            highs.append(float(current_poll['high']))
+            lows.append(float(current_poll['low']))
+        if timestamps[-1] != current_poll['millisecond-timestamp']:
+            print('Current Poll is',current_poll['response'])
+            opens.append(float(current_poll['pollopen']))
+            closes.append(actual_figure(current_poll['bigbid'],current_poll['bidpips']))
+            highs.append(float(current_poll['high']))
+            lows.append(float(current_poll['low']))
+            timestamps.append(current_poll['millisecond-timestamp'])
 
-        # truncate plot axis
-        """
-        del opens[bootstrap:]
-        del closes[bootstrap:]
-        del highs[bootstrap:]
-        del lows[bootstrap:]
-        del timestamps[bootstrap:]
-        """
+            # truncate plot axis
+            """
+            del opens[bootstrap:]
+            del closes[bootstrap:]
+            del highs[bootstrap:]
+            del lows[bootstrap:]
+            del timestamps[bootstrap:]
+            """
+        else:
+            pass
 
 thread_stopper = threading.Event()
 thread = threading.Thread(target=data_listener,args=(thread_stopper,))
-thread.daemon = True # do not be afraid christians! they dont exist :) fear  is of the devil anyways :D
+thread.daemon = True # do not be afraid christians! they dont exist (see galatians-12.) fear  is of the devil anyways :D
 thread.start()
 
 
-time.sleep(1)
+time.sleep(10)
 thread_stopper.set()
 print('length of labels:',len(timestamps),'length of rates',len(closes))
 
-time.sleep(5)
+time.sleep(2)
 print(opens,closes,highs,lows,timestamps)
 ###  BEGIN GRAPH PLOTTING
 import numpy as np
@@ -71,7 +81,7 @@ nptimestamps = list(map(to_np_dt64,timestamps))
 
 print('nptimestamps\n',nptimestamps)
 
-aapl = np.array(closes)
+np_closes = np.array(closes)
 aapl_dates = np.array(nptimestamps, dtype=np.datetime64)
 
 print('aapl_dates',aapl_dates)
@@ -80,7 +90,7 @@ print('aapl_dates',aapl_dates)
 
 window_size = 30
 window = np.ones(window_size)/float(window_size)
-aapl_avg = np.convolve(aapl, window, 'same')
+aapl_avg = np.convolve(np_closes, window, 'same')
 
 # output to static HTML file
 output_file("stocks.html", title="stocks.py example")
@@ -89,11 +99,18 @@ output_file("stocks.html", title="stocks.py example")
 p = figure(width=800, height=350, x_axis_type="datetime")
 
 # add renderers
-p.circle(aapl_dates, aapl, size=4, color='darkgrey', alpha=0.2, legend='close')
-p.line(aapl_dates, aapl_avg, color='navy', legend='avg')
+
+# p.circle(aapl_dates, aapl, size=4, color='darkgrey', alpha=0.2, legend='close')
+
+p.line(aapl_dates, np_closes, color='black', legend='Close')
+p.line(aapl_dates, np.array(opens), color='blue', legend='Opens')
+# p.line(aapl_dates, np.array(highs), color='green', legend='Highs') - values lack enough precision to be usualble
+# p.line(aapl_dates, np.array(lows), color='red', legend='Lows') - values make no sense for now.
+
+# p.line(aapl_dates, aapl_avg, color='navy', legend='Average')
 
 # NEW: customize by setting attributes
-p.title.text = "AAPL One-Month Average"
+p.title.text = "20 Second Sample"
 p.legend.location = "top_left"
 p.grid.grid_line_alpha=0
 p.xaxis.axis_label = 'Date'
