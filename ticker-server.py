@@ -27,49 +27,17 @@ bootstrap = math.ceil(duration_to_plot / tickrate) # round up to give a rough es
 
 # from this example - http://stackoverflow.com/a/18793416
 
-def data_listener(stop_interupt_signal:threading.Event):
-    while (not stop_interupt_signal.is_set()):
-        time.sleep(tickrate)
-        current_poll = truefx.poll_one_pair(auth_response)
-        print('Tick')
-        if not timestamps: # if first entry
-            timestamps.append(current_poll['millisecond-timestamp'])
-            print('Current Poll is', current_poll['response'])
-            opens.append(float(current_poll['pollopen']))
-            closes.append(actual_figure(current_poll['bigbid'], current_poll['bidpips']))
-            highs.append(float(current_poll['high']))
-            lows.append(float(current_poll['low']))
-        if timestamps[-1] != current_poll['millisecond-timestamp']:
-            print('Current Poll is',current_poll['response'])
-            opens.append(float(current_poll['pollopen']))
-            closes.append(actual_figure(current_poll['bigbid'],current_poll['bidpips']))
-            highs.append(float(current_poll['high']))
-            lows.append(float(current_poll['low']))
-            timestamps.append(current_poll['millisecond-timestamp'])
-
-            # truncate plot axis
-            """
-            del opens[bootstrap:]
-            del closes[bootstrap:]
-            del highs[bootstrap:]
-            del lows[bootstrap:]
-            del timestamps[bootstrap:]
-            """
-        else:
-            pass
-
-thread_stopper = threading.Event()
-thread = threading.Thread(target=data_listener,args=(thread_stopper,))
-thread.daemon = True # do not be afraid christians! they dont exist (see galatians-12.) fear  is of the devil anyways :D
-thread.start()
 
 
+"""
 time.sleep(10)
 thread_stopper.set()
 print('length of labels:',len(timestamps),'length of rates',len(closes))
 
 time.sleep(2)
 print(opens,closes,highs,lows,timestamps)
+"""
+
 ###  BEGIN GRAPH PLOTTING
 import numpy as np
 from bokeh.plotting import figure, output_file, show
@@ -77,20 +45,10 @@ from bokeh.plotting import figure, output_file, show
 def to_np_dt64(x):
     return np.datetime_as_string(np.datetime64(x,'ms'))
 
-nptimestamps = list(map(to_np_dt64,timestamps))
-
-print('nptimestamps\n',nptimestamps)
-
-np_closes = np.array(closes)
-aapl_dates = np.array(nptimestamps, dtype=np.datetime64)
-
-print('aapl_dates',aapl_dates)
-
 ## EXAMPLE
 
 window_size = 30
 window = np.ones(window_size)/float(window_size)
-aapl_avg = np.convolve(np_closes, window, 'same')
 
 # output to static HTML file
 output_file("stocks.html", title="stocks.py example")
@@ -102,8 +60,8 @@ p = figure(width=800, height=350, x_axis_type="datetime")
 
 # p.circle(aapl_dates, aapl, size=4, color='darkgrey', alpha=0.2, legend='close')
 
-p.line(aapl_dates, np_closes, color='black', legend='Close')
-p.line(aapl_dates, np.array(opens), color='blue', legend='Open')
+closeline = p.line('y', 'x', color='black', legend='Close')
+openline =  p.line('y', 'x', color='blue', legend='Open')
 # p.line(aapl_dates, np.array(highs), color='green', legend='Highs') - values lack enough precision to be usualble
 # p.line(aapl_dates, np.array(lows), color='red', legend='Lows') - values make no sense for now.
 
@@ -118,7 +76,47 @@ p.yaxis.axis_label = 'Price'
 p.ygrid.band_fill_color="olive"
 p.ygrid.band_fill_alpha = 0.1
 
-# show the results
+# prep the data interfaces
+
+opends = openline.data_source
+closeds = closeline.data_source
+
+# implement the server end. - http://bokeh.pydata.org/en/latest/docs/user_guide/server.html#userguide-server-applications
+
+# start polling data
+
+
+
+def data_listener(stop_interupt_signal:threading.Event):
+    while (not stop_interupt_signal.is_set()):
+        time.sleep(tickrate)
+        current_poll = truefx.poll_one_pair(auth_response)
+        print('Tick') if current_poll else print('Sorry Kids - Markets Closed.')
+        if not timestamps: # if first entry
+            timestamps = current_poll['millisecond-timestamp']
+            print('Current Poll is', current_poll['response'])
+            opens = float(current_poll['pollopen'])
+            closes = actual_figure(current_poll['bigbid'], current_poll['bidpips'])
+            highs = float(current_poll['high'])
+            lows = float(current_poll['low'])
+        if timestamps[-1] != current_poll['millisecond-timestamp']:
+            print('Current Poll is',current_poll['response'])
+            opens = float(current_poll['pollopen'])
+            closes = actual_figure(current_poll['bigbid'],current_poll['bidpips'])
+            highs = float(current_poll['high'])
+            lows = float(current_poll['low'])
+            timestamps = current_poll['millisecond-timestamp']
+        else:
+            pass
+        # pump to dataset
+        opends.data  = {'x':timestamps,'y':opens,'color':'black','legend':'Close'}
+        closeds.data  = {'x':timestamps,'y':closes,'color':'blue','legend':'Open'}
+
+thread_stopper = threading.Event()
+thread = threading.Thread(target=data_listener,args=(thread_stopper,))
+thread.daemon = True # do not be afraid christians! they dont exist (see galatians-12.) fear  is of the devil anyways :D
+thread.start()
+print('Data Listener Started - Showing Graph')
+
 show(p)
 
-## End Example
