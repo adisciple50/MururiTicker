@@ -79,7 +79,12 @@ closeds = closeline.data_source
 # extra hel;p on new feature - https://stackoverflow.com/questions/24800071/timeseries-streaming-in-bokeh
 # start polling data
 
-source = ColumnDataSource(truefx.poll_one_pair(auth_response).update({'actual_figure':actual_figure(truefx.poll_one_pair(auth_response)['bigbid'],truefx.poll_one_pair(auth_response)['bidpips'])})) # try this during tickerr hours.
+def poll():
+    response = truefx.poll_one_pair(auth_response)
+    return poll.update({'actual_figure': actual_figure(response['bigbid'], response['bidpips'])})
+
+
+source = ColumnDataSource(poll()) # try this during tickerr hours.
 
 closeline = p.line(y='', x='millisecond-timestamp', color='black', legend='Close',source=source )
 openline = p.line(y='open', x='millisecond-timestamp', color='blue', legend='Open', source=source )
